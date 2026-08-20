@@ -4,6 +4,32 @@
   "private": true,
   "type": "module",
   "description": "Model-agnostic poster grid inspector: analyze a poster image to detect its underlying layout grid system and export grid overlay SVG / CSS. Ships as an installable AI agent skill.",
+  "keywords": [
+    "poster-grid-inspector",
+    "poster-grid-analysis",
+    "grid-system-detection",
+    "layout-analysis",
+    "swiss-grid",
+    "design-analysis",
+    "vision-model",
+    "multimodal",
+    "openai-compatible",
+    "qwen-vl",
+    "ai-skill",
+    "claude-code-skill",
+    "agent-tool",
+    "figma-grid",
+    "css-grid",
+    "tailwind"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Ygria/poster-grid-inspector.git"
+  },
+  "homepage": "https://github.com/Ygria/poster-grid-inspector",
+  "bugs": {
+    "url": "https://github.com/Ygria/poster-grid-inspector/issues"
+  },
   "license": "MIT",
   "scripts": {
     "setup": "bash scripts/setup.sh",
