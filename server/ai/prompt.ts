@@ -45,6 +45,7 @@ confidence 为 0～100 整数，综合图片清晰度、OCR 可读性、元素�
 
 【输出限制】
 只返回一个符合调用方 JSON Schema 的合法 JSON 对象。不得返回 Markdown、代码围栏、解释、推理过程、注释或 JSON 之外的文字。不要返回 candidateGrids；候选网格和 fitScore 由本地算法计算。
+SVG 不由模型直接生成；调用方会根据本 JSON 中的网格参数、关键线和元素框确定性生成 SVG 参考层。
 `.trim();
 
 export const POSTER_ANALYSIS_USER_PROMPT = '请分析这张完整海报。严格依据图片本身识别元素并按照 JSON Schema 仅返回 JSON。';

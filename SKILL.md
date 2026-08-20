@@ -57,6 +57,15 @@ npm run setup      # npm install + create .env from .env.example
 
 ## Usage
 
+### Default reference artifact
+
+When an image is available, the normal result includes both the structured analysis and a
+deterministic SVG reference layer generated from `gridParams`, `keylines`, and
+`detectedElements`. The vision model returns only JSON; SVG is rendered locally so the overlay
+cannot drift from the validated coordinates. In the web UI, the SVG reference is available as
+**下载 SVG 参考** immediately after analysis, while **调整图层** exposes optional layers and
+CSS / Tailwind output.
+
 ### 1. Web UI (recommended for interactive use)
 
 ```bash
@@ -66,7 +75,7 @@ npm start
 
 Flow: upload a poster image → click **分析网格系统** → the grid overlays the image live
 (columns / rows / margins / baseline / keylines / element boxes, toggles above the preview) →
-click **导出网格** to download an SVG guide or copy CSS Grid / Tailwind code.
+download the automatic SVG reference or click **调整图层** to copy CSS Grid / Tailwind code.
 
 The frontend preprocesses images to ~1600px JPEG (quality 0.9) before sending, matching
 `src/utils/visionImage.ts`.

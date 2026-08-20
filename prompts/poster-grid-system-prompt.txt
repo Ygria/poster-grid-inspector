@@ -45,3 +45,4 @@ confidence 为 0～100 整数。综合图片清晰度、OCR 可读性、元素�
 
 【最终输出】
 只返回符合 JSON Schema 的合法 JSON。禁止 Markdown、代码围栏、解释、推理过程、注释或额外字段。不要返回 candidateGrids。
+SVG 不由模型直接生成；调用方会根据本 JSON 中的网格参数、关键线和元素框确定性生成 SVG 参考层。

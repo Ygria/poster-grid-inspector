@@ -186,7 +186,10 @@
   <div class="card">
     <div class="card-head">
       <h2>分析结果</h2>
-      <button id="exportBtn" class="ghost small" disabled title="先完成一次分析后可用">导出网格</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <button id="referenceSvgBtn" class="ok small" disabled title="先完成一次分析后可用">下载 SVG 参考</button>
+        <button id="exportBtn" class="ghost small" disabled title="先完成一次分析后可用">调整图层</button>
+      </div>
     </div>
     <div class="status" id="status"></div>
     <div id="results" class="empty">还没有分析结果。上传一张海报图片开始。</div>
@@ -249,6 +252,7 @@ function loadFile(file) {
   reader.onload = () => {
     state.originalDataUrl = reader.result;
     state.analysis = null;
+    $('referenceSvgBtn').disabled = true;
     exportBtn.disabled = true;
     resultsEl.className = 'empty';
     resultsEl.textContent = '上传了新图片，点「分析网格系统」重新分析。';
@@ -309,6 +313,7 @@ analyzeBtn.addEventListener('click', async () => {
     state.analysis = j;
     renderStage();
     renderResults(j.data, j.meta);
+    $('referenceSvgBtn').disabled = false;
     exportBtn.disabled = false;
     showStatus('ok', `分析完成 · ${j.meta.cached ? '缓存命中' : '实时分析'} · 模型 ${j.meta.model} · 耗时 ${j.meta.latencyMs}ms`);
   } catch (e) {
@@ -575,6 +580,18 @@ function setTab(which) {
 $('tab-svg').addEventListener('click', () => setTab('svg'));
 $('tab-css').addEventListener('click', () => setTab('css'));
 $('downloadSvgBtn').addEventListener('click', () => downloadSvgFile(generateSvgContent(), exportOptions.includePosterBackground ? 'poster-with-grid.svg' : 'poster-grid-guides.svg'));
+$('referenceSvgBtn').addEventListener('click', () => {
+  if (!state.analysis) return;
+  const currentOptions = { ...exportOptions };
+  Object.assign(exportOptions, {
+    includePosterBackground: true,
+    includeColumns: true, includeRows: true, includeMargins: true,
+    includeBaseline: true, includeDiagonal: true, includeGoldenRatio: false,
+    includeRuleOfThirds: false, includeKeylines: true, includeBoundingBoxes: true,
+  });
+  downloadSvgFile(generateSvgContent(), 'poster-grid-reference.svg');
+  Object.assign(exportOptions, currentOptions);
+});
 $('copySvgBtn').addEventListener('click', async () => { const ok = await copyText(generateSvgContent()); $('copySvgBtn').textContent = ok ? '已复制!' : '复制失败'; setTimeout(() => { $('copySvgBtn').textContent = '复制 SVG'; }, 1500); });
 $('copyCssBtn').addEventListener('click', async () => { const ok = await copyText(generateCssGridCode()); $('copyCssBtn').textContent = ok ? '已复制!' : '复制失败'; setTimeout(() => { $('copyCssBtn').textContent = '复制 CSS'; }, 1500); });
 $('copyTwBtn').addEventListener('click', async () => { const ok = await copyText(generateTailwindGridCode()); $('copyTwBtn').textContent = ok ? '已复制!' : '复制失败'; setTimeout(() => { $('copyTwBtn').textContent = '复制 Tailwind'; }, 1500); });
@@ -604,6 +621,7 @@ function renderResults(d, meta) {
       <div class="kpi"><div class="label">留白比例</div><div class="value">${esc(d.whitespaceRatio)}</div></div>
     </div>
 
+    <div class="section"><h3>SVG 参考层</h3><div>分析完成后已按当前网格参数自动生成分层 SVG。点击右上角可直接下载参考文件；需要切换背景、基线或元素框时使用“调整图层”。</div></div>
     <div class="section"><h3>系统名称</h3><div style="font-size:16px;font-weight:700">${esc(d.systemName)}</div></div>
     <div class="section"><h3>标题</h3><div>${esc(d.title)}</div></div>
     <div class="section"><h3>摘要</h3><div>${esc(d.summary)}</div></div>

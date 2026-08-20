@@ -170,11 +170,30 @@ npm run analyze -- ./poster.jpg --summary
 2. Click / drag a poster image onto the drop zone.
 3. Click **分析网格系统** (analyze). The grid overlays the image live — toggle columns, rows,
    margins, baseline, keylines, and element boxes above the preview.
-4. Click **导出网格** (export) to download an **SVG guide** or copy **CSS Grid / Tailwind** code.
+4. Click **下载 SVG 参考** for the automatic reference artifact, or click **调整图层** to
+   choose SVG layers and copy **CSS Grid / Tailwind** code.
 
 The frontend preprocesses images to ~1600px JPEG (quality 0.9) before sending
 (`src/utils/visionImage.ts`), and protects against out-of-order responses
 (`src/services/analyzeGridApi.ts`).
+
+分析完成后，界面会自动生成一份基于已校验坐标的 SVG 参考层。点击“下载 SVG 参考”可直接
+下载默认图层；点击“调整图层”可以选择是否包含原图、列、行、基线、关键线和元素包围盒，
+并导出 Figma / Illustrator 可用的分层 SVG。
+
+#### Runtime result
+
+![Poster Grid Inspector analysis result](assets/runtime-analysis.jpg)
+
+网格叠加层会直接显示在原海报上，便于判断模型推断出的栏、行、基线和元素边界是否合理：
+
+![Poster Grid Inspector grid overlay](assets/runtime-overlay.jpg)
+
+SVG 和 CSS / Tailwind 导出分别提供可复制、可下载的参考结果：
+
+![Poster Grid Inspector SVG export](assets/runtime-export-svg.jpg)
+
+![Poster Grid Inspector CSS export](assets/runtime-export-css.jpg)
 
 ### 2. CLI
 
