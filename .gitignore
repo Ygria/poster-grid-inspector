@@ -1,0 +1,30 @@
+# Secrets — never commit
+.env
+.env.*
+!.env.example
+*.local
+
+# Claude Code local settings (may contain recorded command history / keys)
+.claude/settings.local.json
+.claude/credentials.json
+
+# Dependencies
+node_modules/
+
+# Build & runtime
+dist/
+build/
+*.log
+npm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editor
+.idea/
+.vscode/
+*.swp
+
+# Temp
+tmp/

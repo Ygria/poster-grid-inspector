@@ -1,0 +1,652 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Poster Grid Inspector · 测试页</title>
+<style>
+  :root {
+    --bg: #0f1115;
+    --panel: #171a21;
+    --panel-2: #1e222b;
+    --border: #2a2f3a;
+    --text: #e8eaf0;
+    --muted: #9aa3b2;
+    --accent: #5b8cff;
+    --accent-2: #7c5bff;
+    --ok: #3ecf8e;
+    --warn: #ffb454;
+    --err: #ff6b6b;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 14px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+  }
+  header {
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: linear-gradient(180deg, rgba(255,255,255,.03), transparent);
+  }
+  header h1 { margin: 0; font-size: 18px; letter-spacing: .3px; }
+  header p { margin: 2px 0 0; color: var(--muted); font-size: 12.5px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 20px; padding: 20px 28px; max-width: 1440px; margin: 0 auto; }
+  .card { background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: 16px; }
+  .card h2 { margin: 0 0 12px; font-size: 13px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); }
+  .card-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+  .card-head h2 { margin: 0; }
+
+  /* Upload + big preview */
+  .drop {
+    border: 1.5px dashed var(--border);
+    border-radius: 10px;
+    text-align: center;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    background: var(--panel-2);
+    position: relative;
+    overflow: hidden;
+    min-height: 300px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+  .drop:hover, .drop.dragover { border-color: var(--accent); background: rgba(91,140,255,.06); }
+  .drop .placeholder { color: var(--muted); font-size: 13px; padding: 32px 12px; }
+  .drop .meta { color: var(--muted); font-size: 11.5px; margin-top: 6px; }
+  #fileInput { display: none; }
+
+  .stage { position: relative; width: 100%; line-height: 0; }
+  .stage img { width: 100%; height: auto; display: block; border-radius: 6px; }
+  .stage svg.overlay { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .stage .reupload {
+    position: absolute; top: 10px; right: 10px; z-index: 5;
+    background: rgba(15,16,21,.85); border: 1px solid var(--border); color: var(--muted);
+    font-size: 12px; padding: 6px 12px; border-radius: 8px; cursor: pointer;
+    opacity: 0; transition: opacity .15s;
+  }
+  .stage:hover .reupload { opacity: 1; }
+
+  .toggles { display: flex; flex-wrap: wrap; gap: 8px 16px; margin-top: 14px; font-size: 12.5px; color: var(--muted); }
+  .toggles label { display: inline-flex; align-items: center; gap: 6px; cursor: pointer; }
+  .toggles input { accent-color: var(--accent); }
+
+  button {
+    padding: 11px 16px;
+    border: none;
+    border-radius: 8px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-2));
+    color: #fff;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: opacity .15s, transform .05s;
+  }
+  button:disabled { opacity: .45; cursor: not-allowed; }
+  button:not(:disabled):active { transform: scale(.99); }
+  button.ghost {
+    background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+    font-weight: 500; font-size: 13px;
+  }
+  button.ghost:disabled {
+    opacity: 1;
+    color: var(--muted);
+    border-style: dashed;
+    cursor: not-allowed;
+    background: var(--panel-2);
+  }
+  button.small { padding: 7px 12px; font-size: 12.5px; border-radius: 7px; }
+  button.ok { background: linear-gradient(90deg, #3ecf8e, #2ba574); }
+
+  /* Status + results */
+  .status { display: none; padding: 10px 14px; border-radius: 8px; font-size: 13px; margin-bottom: 12px; }
+  .status.show { display: block; }
+  .status.loading { background: rgba(91,140,255,.12); border: 1px solid rgba(91,140,255,.35); }
+  .status.ok { background: rgba(62,207,142,.1); border: 1px solid rgba(62,207,142,.35); }
+  .status.err { background: rgba(255,107,107,.1); border: 1px solid rgba(255,107,107,.4); }
+
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 16px; }
+  .kpi { background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .kpi .label { color: var(--muted); font-size: 11px; text-transform: uppercase; letter-spacing: .5px; }
+  .kpi .value { font-size: 16px; font-weight: 700; margin-top: 2px; }
+
+  .section { margin-bottom: 18px; }
+  .section h3 { margin: 0 0 8px; font-size: 12.5px; color: var(--muted); }
+  table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  th, td { text-align: left; padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 500; white-space: nowrap; }
+  .swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+  .swatch { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 11px; color: var(--muted); }
+  .swatch i { width: 42px; height: 42px; border-radius: 8px; border: 1px solid var(--border); }
+  ul.clean { margin: 0; padding-left: 18px; }
+  ul.clean li { margin-bottom: 5px; }
+  .meta-grid { display: grid; grid-template-columns: repeat(2, auto); gap: 3px 18px; font-size: 12.5px; }
+  .meta-grid b { color: var(--text); font-weight: 600; }
+  .empty { color: var(--muted); padding: 18px 0; text-align: center; }
+
+  /* Export modal */
+  .modal-mask {
+    position: fixed; inset: 0; z-index: 60;
+    background: rgba(0,0,0,.75); backdrop-filter: blur(3px);
+    display: none; align-items: flex-start; justify-content: center; padding: 24px; overflow-y: auto;
+  }
+  .modal-mask.open { display: flex; }
+  .modal {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 14px;
+    max-width: 760px; width: 100%; padding: 20px 22px; margin: auto 0;
+  }
+  .modal h2 { margin: 0 0 4px; font-size: 17px; }
+  .modal .sub { color: var(--muted); font-size: 12.5px; margin-bottom: 16px; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; }
+  .tabs button { flex: 1; background: var(--panel-2); border: 1px solid var(--border); color: var(--muted); font-weight: 500; }
+  .tabs button.active { background: linear-gradient(90deg, var(--accent), var(--accent-2)); color: #fff; border-color: transparent; }
+  .opt-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 16px; margin: 12px 0 16px; font-size: 12.5px; }
+  .opt-grid label { display: inline-flex; align-items: center; gap: 7px; cursor: pointer; }
+  .opt-grid input { accent-color: var(--accent); }
+  pre.code {
+    background: var(--panel-2); border: 1px solid var(--border); border-radius: 10px;
+    padding: 12px; font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted);
+    max-height: 260px; overflow: auto; white-space: pre; margin: 0 0 14px;
+  }
+  .modal-actions { display: flex; justify-content: flex-end; gap: 10px; flex-wrap: wrap; }
+  .modal-close { position: absolute; top: 14px; right: 16px; background: none; border: none; color: var(--muted); font-size: 20px; cursor: pointer; }
+
+  @media (max-width: 920px) { .layout { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<header>
+  <h1>Poster Grid Inspector · 测试页</h1>
+  <p>上传海报 → AI 分析网格系统 → 图上查看网格 → 导出 SVG / CSS 网格代码</p>
+</header>
+
+<div class="layout">
+  <!-- 左：大图预览 + 网格覆盖层 -->
+  <div class="card">
+    <div class="card-head"><h2>海报预览</h2><span class="meta" id="fileMeta" style="color:var(--muted);font-size:11.5px"></span></div>
+    <div class="drop" id="drop">
+      <div class="placeholder" id="placeholder">点击或拖拽图片到这里</div>
+    </div>
+    <div class="toggles" id="overlayToggles" style="display:none">
+      <label><input type="checkbox" id="tg-margins" checked /> 边距</label>
+      <label><input type="checkbox" id="tg-columns" checked /> 列</label>
+      <label><input type="checkbox" id="tg-rows" checked /> 行</label>
+      <label><input type="checkbox" id="tg-baseline" checked /> 基线</label>
+      <label><input type="checkbox" id="tg-keylines" checked /> 关键线</label>
+      <label><input type="checkbox" id="tg-bboxes" checked /> 元素框</label>
+    </div>
+    <input type="file" id="fileInput" accept="image/*" />
+    <button id="analyzeBtn" disabled style="margin-top:14px">分析网格系统</button>
+  </div>
+
+  <!-- 右：结果 + 导出 -->
+  <div class="card">
+    <div class="card-head">
+      <h2>分析结果</h2>
+      <button id="exportBtn" class="ghost small" disabled title="先完成一次分析后可用">导出网格</button>
+    </div>
+    <div class="status" id="status"></div>
+    <div id="results" class="empty">还没有分析结果。上传一张海报图片开始。</div>
+  </div>
+</div>
+
+<!-- 导出弹窗 -->
+<div class="modal-mask" id="exportModal">
+  <div class="modal" style="position:relative">
+    <button class="modal-close" id="exportClose" title="关闭">&times;</button>
+    <h2>导出网格</h2>
+    <div class="sub">SVG 矢量网格图层（可导入 Figma / Illustrator）或 CSS Grid 代码</div>
+    <div class="tabs">
+      <button id="tab-svg" class="active">SVG 网格文件</button>
+      <button id="tab-css">CSS Grid / Tailwind 代码</button>
+    </div>
+
+    <div id="pane-svg">
+      <div class="opt-grid" id="exportOptions"></div>
+      <pre class="code" id="svgPreview"></pre>
+      <div class="modal-actions">
+        <button class="ghost" id="copySvgBtn">复制 SVG</button>
+        <button class="ok" id="downloadSvgBtn">下载 .svg</button>
+      </div>
+    </div>
+
+    <div id="pane-css" style="display:none">
+      <pre class="code" id="cssPreview" style="color:#7cc0ff"></pre>
+      <pre class="code" id="tailwindPreview" style="color:#7ee0a0"></pre>
+      <div class="modal-actions">
+        <button class="ghost" id="copyCssBtn">复制 CSS</button>
+        <button class="ghost" id="copyTwBtn">复制 Tailwind</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+const drop = $('drop'), fileInput = $('fileInput'), placeholder = $('placeholder'),
+      fileMeta = $('fileMeta'), analyzeBtn = $('analyzeBtn'), statusEl = $('status'),
+      resultsEl = $('results'), exportBtn = $('exportBtn'), overlayToggles = $('overlayToggles');
+
+const state = {
+  originalDataUrl: null,   // 原图（用于预览底图）
+  prepared: null,          // 压缩后的 {dataUrl, cleanBase64, mimeType, width, height}
+  analysis: null,          // { data, meta }
+};
+
+// ---------- 上传 ----------
+drop.addEventListener('click', (e) => { if (!state.prepared || e.target.closest('.reupload')) fileInput.click(); });
+drop.addEventListener('dragover', (e) => { e.preventDefault(); drop.classList.add('dragover'); });
+drop.addEventListener('dragleave', () => drop.classList.remove('dragover'));
+drop.addEventListener('drop', (e) => { e.preventDefault(); drop.classList.remove('dragover'); const f = e.dataTransfer.files[0]; if (f) loadFile(f); });
+fileInput.addEventListener('change', () => { if (fileInput.files[0]) loadFile(fileInput.files[0]); });
+
+function loadFile(file) {
+  if (!file.type.startsWith('image/')) { showStatus('err', '请选择图片文件。'); return; }
+  const reader = new FileReader();
+  reader.onload = () => {
+    state.originalDataUrl = reader.result;
+    state.analysis = null;
+    exportBtn.disabled = true;
+    resultsEl.className = 'empty';
+    resultsEl.textContent = '上传了新图片，点「分析网格系统」重新分析。';
+    renderStage();
+    fileMeta.textContent = `${file.name} · ${(file.size / 1024).toFixed(0)} KB`;
+    analyzeBtn.disabled = false;
+  };
+  reader.readAsDataURL(file);
+}
+
+// 与 src/utils/visionImage.ts 对齐：最长边压到 1600px，JPEG 质量 0.9，且 ≤ 8MB
+function bytesOfDataUrl(s) { const b = s.slice(s.indexOf(',') + 1); return Math.ceil(b.length * 3 / 4); }
+function prepareImage(imageSrc, maxDim = 1600) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      const ow = img.naturalWidth || img.width, oh = img.naturalHeight || img.height;
+      const scale = Math.min(1, maxDim / Math.max(ow, oh));
+      const w = Math.max(1, Math.round(ow * scale)), h = Math.max(1, Math.round(oh * scale));
+      const c = document.createElement('canvas'); c.width = w; c.height = h;
+      const x = c.getContext('2d'); if (!x) return reject(new Error('Canvas unavailable'));
+      x.fillStyle = '#fff'; x.fillRect(0, 0, w, h); x.drawImage(img, 0, 0, w, h);
+      let q = .9; let dataUrl = c.toDataURL('image/jpeg', q);
+      while (bytesOfDataUrl(dataUrl) > 8 * 1024 * 1024 && q > .6) { q -= .08; dataUrl = c.toDataURL('image/jpeg', q); }
+      resolve({ dataUrl, cleanBase64: dataUrl.slice(dataUrl.indexOf(',') + 1), mimeType: 'image/jpeg', width: w, height: h });
+    };
+    img.onerror = () => reject(new Error('图片加载失败'));
+    img.src = imageSrc;
+  });
+}
+
+// ---------- 分析请求（与 src/services/analyzeGridApi.ts 对齐） ----------
+let activeController = null;
+function analyzeGrid(imageBase64, mimeType, timeoutMs = 60000) {
+  if (activeController) activeController.abort();
+  const controller = new AbortController(); activeController = controller;
+  const t = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch('/api/analyze-grid', {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ imageBase64, mimeType }), signal: controller.signal,
+  }).then(async (r) => {
+    const j = await r.json().catch(() => ({}));
+    if (!r.ok || !j.success) { const err = new Error(j.error || `分析失败 (${r.status})`); err.code = j.code; err.retryable = Boolean(j.retryable); throw err; }
+    return j;
+  }).finally(() => { clearTimeout(t); if (activeController === controller) activeController = null; });
+}
+
+function showStatus(type, msg) { statusEl.className = 'status show ' + type; statusEl.textContent = msg; }
+function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c])); }
+
+analyzeBtn.addEventListener('click', async () => {
+  if (!state.originalDataUrl) return;
+  analyzeBtn.disabled = true;
+  showStatus('loading', '正在压缩图片并分析…（AI 分析可能需要十几秒）');
+  try {
+    state.prepared = await prepareImage(state.originalDataUrl);
+    const j = await analyzeGrid(state.prepared.cleanBase64, state.prepared.mimeType);
+    state.analysis = j;
+    renderStage();
+    renderResults(j.data, j.meta);
+    exportBtn.disabled = false;
+    showStatus('ok', `分析完成 · ${j.meta.cached ? '缓存命中' : '实时分析'} · 模型 ${j.meta.model} · 耗时 ${j.meta.latencyMs}ms`);
+  } catch (e) {
+    showStatus('err', `分析失败：${e.message || e}`);
+  } finally { analyzeBtn.disabled = false; }
+});
+
+// ---------- 舞台：大图 + 网格覆盖层 ----------
+function displayGridParams() {
+  const d = (state.analysis && state.analysis.data) || {};
+  const g = d.gridParams || {};
+  return {
+    columns: g.columns ?? 12, rows: g.rows ?? 8,
+    marginTop: g.marginTop ?? 10, marginBottom: g.marginBottom ?? 10,
+    marginLeft: g.marginLeft ?? 8, marginRight: g.marginRight ?? 8,
+    columnGutter: g.columnGutter ?? 2, rowGutter: g.rowGutter ?? 2,
+    baselineSpacing: g.baselineSpacing ?? 2.5, diagonalAngle: g.diagonalAngle ?? 0,
+    // 前端补齐的 UI 绘制字段（README：不交给模型）
+    color: '#FF3B30', opacity: 0.7, strokeWidth: 1.5,
+  };
+}
+
+function renderStage() {
+  const imgW = (state.prepared && state.prepared.width) || 800;
+  const imgH = (state.prepared && state.prepared.height) || 1000;
+  if (!state.originalDataUrl) {
+    drop.innerHTML = '<div class="placeholder">点击或拖拽图片到这里</div>';
+    overlayToggles.style.display = 'none';
+    return;
+  }
+  drop.innerHTML = `<div class="stage">
+      <img src="${state.originalDataUrl}" alt="poster preview" />
+      <svg class="overlay" viewBox="0 0 ${imgW} ${imgH}" preserveAspectRatio="none"></svg>
+      <button class="reupload">更换图片</button>
+    </div>`;
+  drop.querySelector('.reupload').addEventListener('click', (e) => { e.stopPropagation(); fileInput.click(); });
+  overlayToggles.style.display = 'flex';
+  ['tg-margins','tg-columns','tg-rows','tg-baseline','tg-keylines','tg-bboxes'].forEach((id) => $(id).addEventListener('change', renderOverlay));
+  renderOverlay();
+}
+
+function renderOverlay() {
+  const svgEl = drop.querySelector('svg.overlay');
+  if (!svgEl || !state.analysis) { if (svgEl) svgEl.innerHTML = ''; return; }
+  const g = displayGridParams();
+  const d = state.analysis.data;
+  const imgW = state.prepared.width, imgH = state.prepared.height;
+  const w = imgW, h = imgH;
+
+  const show = {
+    margins: $('tg-margins').checked, columns: $('tg-columns').checked, rows: $('tg-rows').checked,
+    baseline: $('tg-baseline').checked, keylines: $('tg-keylines').checked, bboxes: $('tg-bboxes').checked,
+  };
+
+  const topPx = g.marginTop / 100 * h, bottomPx = h - g.marginBottom / 100 * h;
+  const leftPx = g.marginLeft / 100 * w, rightPx = w - g.marginRight / 100 * w;
+  const contentW = Math.max(0, rightPx - leftPx), contentH = Math.max(0, bottomPx - topPx);
+  const colGut = g.columnGutter / 100 * w, rowGut = g.rowGutter / 100 * h;
+  const singleColW = Math.max(0, (contentW - Math.max(0, g.columns - 1) * colGut) / g.columns);
+  const singleRowH = Math.max(0, (contentH - Math.max(0, g.rows - 1) * rowGut) / g.rows);
+  const col = g.color, op = g.opacity, sw = g.strokeWidth;
+
+  let s = '';
+  if (show.margins) s += `<rect x="${leftPx}" y="${topPx}" width="${contentW}" height="${contentH}" fill="none" stroke="${col}" stroke-opacity="${op}" stroke-width="${sw * 1.3}" stroke-dasharray="6 4"/>`;
+  if (show.columns) for (let i = 0; i < g.columns; i++) { const cx = leftPx + i * (singleColW + colGut); s += `<rect x="${cx}" y="${topPx}" width="${singleColW}" height="${contentH}" fill="${col}" fill-opacity="${op * 0.16}" stroke="${col}" stroke-opacity="${op}" stroke-width="${sw}"/>`; }
+  if (show.rows) for (let j = 0; j < g.rows; j++) { const ry = topPx + j * (singleRowH + rowGut); s += `<rect x="${leftPx}" y="${ry}" width="${contentW}" height="${singleRowH}" fill="${col}" fill-opacity="${op * 0.06}" stroke="${col}" stroke-opacity="${op * 0.9}" stroke-width="${sw}"/>`; }
+  if (show.baseline && g.baselineSpacing > 0) { const step = g.baselineSpacing / 100 * h; for (let y = topPx; y <= bottomPx; y += step) s += `<line x1="${leftPx}" y1="${y}" x2="${rightPx}" y2="${y}" stroke="${col}" stroke-opacity="${op * 0.32}" stroke-width="0.75"/>`; }
+  if (show.keylines) (d.keylines || []).forEach((kl) => {
+    if (kl.type === 'vertical') { const px = kl.position / 100 * w; s += `<line x1="${px}" y1="0" x2="${px}" y2="${h}" stroke="#00F0FF" stroke-width="2" stroke-dasharray="6 3"/>`; }
+    else { const py = kl.position / 100 * h; s += `<line x1="0" y1="${py}" x2="${w}" y2="${py}" stroke="#00F0FF" stroke-width="2" stroke-dasharray="6 3"/>`; }
+  });
+  if (show.bboxes) (d.detectedElements || []).forEach((el) => {
+    const bx = el.x / 100 * w, by = el.y / 100 * h, bw = el.width / 100 * w, bh = el.height / 100 * h;
+    s += `<rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="#FF3B30" fill-opacity="0.1" stroke="#FF3B30" stroke-width="1.5" stroke-dasharray="4 2"/>`;
+    s += `<rect x="${bx}" y="${Math.max(0, by - 20)}" width="${Math.min(bw, 200)}" height="20" fill="#FF3B30"/><text x="${bx + 5}" y="${Math.max(14, by - 6)}" font-family="sans-serif" font-size="12" font-weight="bold" fill="#fff">${esc(el.label)}</text>`;
+  });
+  svgEl.innerHTML = s;
+}
+
+['tg-margins','tg-columns','tg-rows','tg-baseline','tg-keylines','tg-bboxes'].forEach((id) => $(id).addEventListener('change', renderOverlay));
+
+// ---------- 导出（移植自原仓库 src/utils/gridExport.ts） ----------
+const exportOptions = {
+  includePosterBackground: true,
+  includeColumns: true, includeRows: true, includeMargins: true,
+  includeBaseline: true, includeDiagonal: true, includeGoldenRatio: false,
+  includeRuleOfThirds: false, includeKeylines: true, includeBoundingBoxes: true,
+  asFigmaLayers: true,
+};
+
+function generateSvgContent() {
+  const g = displayGridParams();
+  const d = state.analysis.data;
+  const w = state.prepared.width, h = state.prepared.height;
+
+  const topPx = g.marginTop / 100 * h, bottomPx = h - g.marginBottom / 100 * h;
+  const leftPx = g.marginLeft / 100 * w, rightPx = w - g.marginRight / 100 * w;
+  const contentW = rightPx - leftPx, contentH = bottomPx - topPx;
+  const colGut = g.columnGutter / 100 * w, rowGut = g.rowGutter / 100 * h;
+  const singleColW = Math.max(0, (contentW - Math.max(0, g.columns - 1) * colGut) / g.columns);
+  const singleRowH = Math.max(0, (contentH - Math.max(0, g.rows - 1) * rowGut) / g.rows);
+  const strokeAttr = `stroke="${g.color}" stroke-opacity="${g.opacity}" stroke-width="${g.strokeWidth}"`;
+
+  let els = '';
+  if (exportOptions.includePosterBackground) {
+    els += `\n  <g id="Poster-Image-Layer"><image href="${state.prepared.dataUrl}" x="0" y="0" width="${w}" height="${h}" preserveAspectRatio="none"/></g>`;
+  } else {
+    els += `\n  <g id="Background-Canvas"><rect width="${w}" height="${h}" fill="#FFFFFF"/></g>`;
+  }
+
+  if (exportOptions.includeMargins) {
+    els += `\n  <g id="Grid-Layer-Margins"><rect x="${leftPx}" y="${topPx}" width="${contentW}" height="${contentH}" fill="none" ${strokeAttr} stroke-dasharray="4 4"/><text x="${leftPx + 6}" y="${topPx - 6}" font-family="sans-serif" font-size="12" fill="${g.color}">Margin: Top ${g.marginTop}% | Left ${g.marginLeft}% | Right ${g.marginRight}% | Bottom ${g.marginBottom}%</text></g>`;
+  }
+  if (exportOptions.includeColumns && g.columns > 0) {
+    let c = `\n  <g id="Grid-Layer-Columns">`;
+    for (let i = 0; i < g.columns; i++) {
+      const cx = leftPx + i * (singleColW + colGut);
+      c += `\n    <rect x="${cx}" y="${topPx}" width="${singleColW}" height="${contentH}" fill="${g.color}" fill-opacity="${g.opacity * 0.15}" ${strokeAttr}/><text x="${cx + singleColW / 2}" y="${topPx + 16}" text-anchor="middle" font-family="sans-serif" font-size="10" fill="${g.color}">C${i + 1}</text>`;
+    }
+    els += c + `\n  </g>`;
+  }
+  if (exportOptions.includeRows && g.rows > 0) {
+    let r = `\n  <g id="Grid-Layer-Rows">`;
+    for (let j = 0; j < g.rows; j++) {
+      const ry = topPx + j * (singleRowH + rowGut);
+      r += `\n    <rect x="${leftPx}" y="${ry}" width="${contentW}" height="${singleRowH}" fill="none" ${strokeAttr} stroke-dasharray="2 2"/><text x="${leftPx - 20}" y="${ry + singleRowH / 2 + 4}" font-family="sans-serif" font-size="10" fill="${g.color}">R${j + 1}</text>`;
+    }
+    els += r + `\n  </g>`;
+  }
+  if (exportOptions.includeBaseline && g.baselineSpacing > 0) {
+    const step = g.baselineSpacing / 100 * h;
+    let b = `\n  <g id="Grid-Layer-Baseline">`;
+    for (let y = topPx; y <= bottomPx; y += step) b += `\n    <line x1="${leftPx}" y1="${y}" x2="${rightPx}" y2="${y}" stroke="${g.color}" stroke-opacity="${g.opacity * 0.4}" stroke-width="0.75"/>`;
+    els += b + `\n  </g>`;
+  }
+  if (exportOptions.includeDiagonal && g.diagonalAngle !== 0) {
+    const cx = w / 2, cy = h / 2;
+    els += `\n  <g id="Grid-Layer-Diagonal" transform="rotate(${g.diagonalAngle}, ${cx}, ${cy})"><line x1="-${w}" y1="${cy}" x2="${w * 2}" y2="${cy}" ${strokeAttr} stroke-dasharray="6 3"/><line x1="${cx}" y1="-${h}" x2="${cx}" y2="${h * 2}" ${strokeAttr} stroke-dasharray="6 3"/></g>`;
+  }
+  if (exportOptions.includeRuleOfThirds) {
+    const tw = w / 3, th = h / 3;
+    els += `\n  <g id="Grid-Layer-RuleOfThirds"><line x1="${tw}" y1="0" x2="${tw}" y2="${h}" stroke="#E11D48" stroke-opacity="${g.opacity}" stroke-width="1.5" stroke-dasharray="5 5"/><line x1="${tw * 2}" y1="0" x2="${tw * 2}" y2="${h}" stroke="#E11D48" stroke-opacity="${g.opacity}" stroke-width="1.5" stroke-dasharray="5 5"/><line x1="0" y1="${th}" x2="${w}" y2="${th}" stroke="#E11D48" stroke-opacity="${g.opacity}" stroke-width="1.5" stroke-dasharray="5 5"/><line x1="0" y1="${th * 2}" x2="${w}" y2="${th * 2}" stroke="#E11D48" stroke-opacity="${g.opacity}" stroke-width="1.5" stroke-dasharray="5 5"/></g>`;
+  }
+  if (exportOptions.includeGoldenRatio) {
+    const phi = 0.61803398875, gx1 = w * (1 - phi), gx2 = w * phi, gy1 = h * (1 - phi), gy2 = h * phi;
+    els += `\n  <g id="Grid-Layer-GoldenRatio"><line x1="${gx1}" y1="0" x2="${gx1}" y2="${h}" stroke="#D97706" stroke-opacity="${g.opacity}" stroke-width="1.5"/><line x1="${gx2}" y1="0" x2="${gx2}" y2="${h}" stroke="#D97706" stroke-opacity="${g.opacity}" stroke-width="1.5"/><line x1="0" y1="${gy1}" x2="${w}" y2="${gy1}" stroke="#D97706" stroke-opacity="${g.opacity}" stroke-width="1.5"/><line x1="0" y1="${gy2}" x2="${w}" y2="${gy2}" stroke="#D97706" stroke-opacity="${g.opacity}" stroke-width="1.5"/></g>`;
+  }
+  if (exportOptions.includeKeylines && (d.keylines || []).length) {
+    let k = `\n  <g id="Grid-Layer-Keylines">`;
+    (d.keylines || []).forEach((kl) => {
+      if (kl.type === 'vertical') { const px = kl.position / 100 * w; k += `\n    <line x1="${px}" y1="0" x2="${px}" y2="${h}" stroke="#10B981" stroke-width="2"/><text x="${px + 4}" y="${h - 12}" font-family="sans-serif" font-size="10" fill="#10B981">${esc(kl.label || 'Keyline')}</text>`; }
+      else { const py = kl.position / 100 * h; k += `\n    <line x1="0" y1="${py}" x2="${w}" y2="${py}" stroke="#10B981" stroke-width="2"/><text x="12" y="${py - 4}" font-family="sans-serif" font-size="10" fill="#10B981">${esc(kl.label || 'Keyline')}</text>`; }
+    });
+    els += k + `\n  </g>`;
+  }
+  if (exportOptions.includeBoundingBoxes && (d.detectedElements || []).length) {
+    let b = `\n  <g id="Detected-Poster-Elements">`;
+    (d.detectedElements || []).forEach((el) => {
+      const bx = el.x / 100 * w, by = el.y / 100 * h, bw = el.width / 100 * w, bh = el.height / 100 * h;
+      b += `\n    <rect x="${bx}" y="${by}" width="${bw}" height="${bh}" fill="#8B5CF6" fill-opacity="0.1" stroke="#8B5CF6" stroke-width="1.5" stroke-dasharray="3 3"/><rect x="${bx}" y="${by - 18}" width="${Math.min(bw, 180)}" height="18" fill="#8B5CF6"/><text x="${bx + 4}" y="${by - 5}" font-family="sans-serif" font-size="11" font-weight="bold" fill="#FFFFFF">${esc(el.label)}</text>`;
+    });
+    els += b + `\n  </g>`;
+  }
+
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${w} ${h}" width="${w}" height="${h}">
+  <!-- Generated by Poster Grid Inspector AI -->
+${els}
+</svg>`;
+}
+
+function generateCssGridCode() {
+  const g = displayGridParams();
+  return `/* Poster Grid CSS Layout System */
+.poster-container {
+  display: grid;
+  width: 100%;
+  height: 100%;
+  padding-top: ${g.marginTop}%;
+  padding-bottom: ${g.marginBottom}%;
+  padding-left: ${g.marginLeft}%;
+  padding-right: ${g.marginRight}%;
+  grid-template-columns: repeat(${g.columns}, 1fr);
+  grid-template-rows: repeat(${g.rows}, 1fr);
+  column-gap: ${g.columnGutter}%;
+  row-gap: ${g.rowGutter}%;
+  box-sizing: border-box;
+}
+
+/* Example Element Spanning 4 Columns and 2 Rows */
+.poster-headline { grid-column: 1 / span 4; grid-row: 1 / span 2; }
+.poster-visual { grid-column: 1 / span ${g.columns}; grid-row: 3 / span 4; }`;
+}
+
+function generateTailwindGridCode() {
+  const g = displayGridParams();
+  return `<!-- Tailwind CSS Grid Structure -->
+<div class="grid grid-cols-${g.columns} gap-${Math.round(g.columnGutter * 2)} p-8 w-full h-full">
+  <!-- Headline Block -->
+  <div class="col-span-${Math.min(g.columns, 8)} row-span-2">
+    <h1 class="text-4xl font-bold tracking-tight">POSTER TITLE</h1>
+  </div>
+  <!-- Content Block -->
+  <div class="col-span-${g.columns} row-span-4 bg-gray-100 rounded">
+    <!-- Visual Image Container -->
+  </div>
+</div>`;
+}
+
+function downloadSvgFile(content, name) {
+  const blob = new Blob([content], { type: 'image/svg+xml;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href = url; a.download = name;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+async function copyText(text) {
+  try { await navigator.clipboard.writeText(text); return true; } catch { return false; }
+}
+
+// ---------- 导出弹窗 UI ----------
+const EXPORT_OPTION_DEFS = [
+  ['includePosterBackground', '包含原图背景'],
+  ['includeColumns', '垂直列 (Columns)'],
+  ['includeRows', '水平行 (Rows)'],
+  ['includeMargins', '外边距 (Margins)'],
+  ['includeBaseline', '基线网格 (Baseline)'],
+  ['includeDiagonal', '对角线 (Diagonal)'],
+  ['includeRuleOfThirds', '三分法 (Rule of Thirds)'],
+  ['includeGoldenRatio', '黄金比例 (Golden Ratio)'],
+  ['includeKeylines', '关键线 (Keylines)'],
+  ['includeBoundingBoxes', '元素包围盒 (Bounding Boxes)'],
+];
+function buildExportOptionUI() {
+  $('exportOptions').innerHTML = EXPORT_OPTION_DEFS.map(([k, label]) =>
+    `<label><input type="checkbox" id="eo-${k}" ${exportOptions[k] ? 'checked' : ''} /> ${label}</label>`
+  ).join('');
+  EXPORT_OPTION_DEFS.forEach(([k]) => $(`eo-${k}`).addEventListener('change', (e) => { exportOptions[k] = e.target.checked; refreshExport(); }));
+}
+function refreshExport() {
+  if ($('tab-svg').classList.contains('active')) {
+    $('svgPreview').textContent = generateSvgContent();
+  } else {
+    $('cssPreview').textContent = generateCssGridCode();
+    $('tailwindPreview').textContent = generateTailwindGridCode();
+  }
+}
+$('exportBtn').addEventListener('click', () => {
+  if (!state.analysis) return;
+  buildExportOptionUI();
+  refreshExport();
+  $('exportModal').classList.add('open');
+});
+$('exportClose').addEventListener('click', () => $('exportModal').classList.remove('open'));
+$('exportModal').addEventListener('click', (e) => { if (e.target === $('exportModal')) $('exportModal').classList.remove('open'); });
+function setTab(which) {
+  $('tab-svg').classList.toggle('active', which === 'svg');
+  $('tab-css').classList.toggle('active', which === 'css');
+  $('pane-svg').style.display = which === 'svg' ? '' : 'none';
+  $('pane-css').style.display = which === 'css' ? '' : 'none';
+  refreshExport();
+}
+$('tab-svg').addEventListener('click', () => setTab('svg'));
+$('tab-css').addEventListener('click', () => setTab('css'));
+$('downloadSvgBtn').addEventListener('click', () => downloadSvgFile(generateSvgContent(), exportOptions.includePosterBackground ? 'poster-with-grid.svg' : 'poster-grid-guides.svg'));
+$('copySvgBtn').addEventListener('click', async () => { const ok = await copyText(generateSvgContent()); $('copySvgBtn').textContent = ok ? '已复制!' : '复制失败'; setTimeout(() => { $('copySvgBtn').textContent = '复制 SVG'; }, 1500); });
+$('copyCssBtn').addEventListener('click', async () => { const ok = await copyText(generateCssGridCode()); $('copyCssBtn').textContent = ok ? '已复制!' : '复制失败'; setTimeout(() => { $('copyCssBtn').textContent = '复制 CSS'; }, 1500); });
+$('copyTwBtn').addEventListener('click', async () => { const ok = await copyText(generateTailwindGridCode()); $('copyTwBtn').textContent = ok ? '已复制!' : '复制失败'; setTimeout(() => { $('copyTwBtn').textContent = '复制 Tailwind'; }, 1500); });
+
+// ---------- 结果渲染 ----------
+function renderResults(d, meta) {
+  const g = d.gridParams || {};
+  const typeLabels = { swiss_modular: '瑞士模块化', '12_column': '12 栏', '6_column': '6 栏', '3_column': '3 栏', asymmetric: '非对称', baseline_grid: '基线网格', golden_ratio: '黄金比例', rule_of_thirds: '三分法', diagonal_isometric: '对角等距', radial: '放射状', freeform_organic: '自由拼贴' };
+
+  const elementRows = (d.detectedElements || []).map((el) =>
+    `<tr><td>${esc(el.label)}</td><td>${esc(el.type)}</td><td>${esc(el.x)}</td><td>${esc(el.y)}</td><td>${esc(el.width)}×${esc(el.height)}</td><td>${esc(el.alignmentNote)}</td></tr>`
+  ).join('');
+
+  const keylineHtml = (d.keylines || []).map((k) =>
+    `<li><b>${esc(k.type === 'vertical' ? '竖' : '横')}</b> @ ${esc(k.position)}% — ${esc(k.label)}</li>`
+  ).join('');
+
+  const swatchHtml = (d.colorPalette || []).map((c) =>
+    `<div class="swatch"><i style="background:${esc(c)}"></i>${esc(c)}</div>`
+  ).join('');
+
+  resultsEl.className = '';
+  resultsEl.innerHTML = `
+    <div class="kpis">
+      <div class="kpi"><div class="label">网格系统</div><div class="value">${esc(typeLabels[d.systemType] || d.systemType)}</div></div>
+      <div class="kpi"><div class="label">置信度</div><div class="value">${esc(d.confidence)}%</div></div>
+      <div class="kpi"><div class="label">留白比例</div><div class="value">${esc(d.whitespaceRatio)}</div></div>
+    </div>
+
+    <div class="section"><h3>系统名称</h3><div style="font-size:16px;font-weight:700">${esc(d.systemName)}</div></div>
+    <div class="section"><h3>标题</h3><div>${esc(d.title)}</div></div>
+    <div class="section"><h3>摘要</h3><div>${esc(d.summary)}</div></div>
+
+    <div class="section">
+      <h3>网格参数</h3>
+      <table>
+        <tr><th>列 × 行</th><th>上 / 下边距</th><th>左 / 右边距</th><th>列间距 / 行间距</th><th>基线间距</th><th>对角角度</th></tr>
+        <tr>
+          <td>${esc(g.columns)} × ${esc(g.rows)}</td>
+          <td>${esc(g.marginTop)} / ${esc(g.marginBottom)}%</td>
+          <td>${esc(g.marginLeft)} / ${esc(g.marginRight)}%</td>
+          <td>${esc(g.columnGutter)} / ${esc(g.rowGutter)}%</td>
+          <td>${esc(g.baselineSpacing)}</td>
+          <td>${esc(g.diagonalAngle)}°</td>
+        </tr>
+      </table>
+    </div>
+
+    <div class="section">
+      <h3>检测到的元素 (${(d.detectedElements || []).length})</h3>
+      <table><tr><th>标签</th><th>类型</th><th>x</th><th>y</th><th>尺寸</th><th>对齐说明</th></tr>${elementRows}</table>
+    </div>
+
+    <div class="section"><h3>关键线 (${(d.keylines || []).length})</h3><ul class="clean">${keylineHtml || '<li>无</li>'}</ul></div>
+    <div class="section"><h3>瑞士原则</h3><ul class="clean">${(d.swissPrinciples || []).map((s) => `<li>${esc(s)}</li>`).join('')}</ul></div>
+    <div class="section"><h3>层级评级</h3><div>${esc(d.typeHierarchyRating)}</div></div>
+    <div class="section"><h3>色板</h3><div class="swatches">${swatchHtml || '无'}</div></div>
+
+    <div class="section">
+      <h3>请求元信息</h3>
+      <div class="meta-grid">
+        <span>Provider: <b>${esc(meta.provider)}</b></span>
+        <span>Model: <b>${esc(meta.model)}</b></span>
+        <span>Latency: <b>${esc(meta.latencyMs)}ms</b></span>
+        <span>Cached: <b>${esc(meta.cached)}</b></span>
+        <span>Prompt: <b>${esc(meta.promptVersion)}</b></span>
+        <span>Schema: <b>${esc(meta.schemaVersion)}</b></span>
+        ${meta.requestId ? `<span>RequestId: <b>${esc(meta.requestId)}</b></span>` : ''}
+      </div>
+    </div>
+  `;
+}
+</script>
+</body>
+</html>

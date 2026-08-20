@@ -1,0 +1,28 @@
+{
+  "name": "poster-grid-inspector",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Model-agnostic poster grid inspector: analyze a poster image to detect its underlying layout grid system and export grid overlay SVG / CSS. Ships as an installable AI agent skill.",
+  "license": "MIT",
+  "scripts": {
+    "setup": "bash scripts/setup.sh",
+    "dev": "tsx watch server.ts",
+    "start": "tsx server.ts",
+    "analyze": "tsx scripts/analyze.mts",
+    "typecheck": "tsc --noEmit"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
+  }
+}

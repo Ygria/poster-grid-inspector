@@ -1,0 +1,4 @@
+{
+  "notes": "Uses native fetch for AI providers; no AI SDK dependency is required.",
+  "remove_if_unused": ["@google/genai"]
+}
