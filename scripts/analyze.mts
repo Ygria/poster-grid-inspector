@@ -3,8 +3,8 @@
 // Usage:
 //   npm run analyze -- <image-path> [--summary]
 //
-// Reads the file, sends it base64 to the AI analysis pipeline and prints the result.
-// Requires .env to be configured (see npm run setup).
+// Reads the file, sends it base64 to the optional remote AI analysis pipeline and prints the result.
+// Requires AI_REMOTE_ANALYSIS=1 and a configured .env (see npm run setup).
 import 'dotenv/config';
 import { readFile } from 'node:fs/promises';
 import { analyzePoster } from '../server/ai/analyzePoster.js';
@@ -21,7 +21,13 @@ const mime =
   : 'image/jpeg';
 
 const base64 = (await readFile(file)).toString('base64');
-const out = await analyzePoster(base64, mime);
+let out;
+try {
+  out = await analyzePoster(base64, mime);
+} catch (error) {
+  console.error(error instanceof Error ? error.message : String(error));
+  process.exit(1);
+}
 
 if (process.argv.includes('--summary')) {
   const d = out.data;

@@ -4,7 +4,8 @@ Guidance for AI coding agents working in this repository. Read this before modif
 
 ## What this repo is
 
-A model-agnostic **poster grid analysis** tool. It sends a poster image to a vision model
+A model-agnostic **poster grid analysis** tool. The installable skill uses the host model's native
+vision capability by default. Its optional web/CLI mode sends a poster image to a vision model
 (OpenAI or any OpenAI-compatible provider), gets back the layout's grid system, parameters,
 detected elements, keylines, and analysis — then renders the grid overlaid on the image and can
 export it as SVG guides or CSS Grid / Tailwind code.
@@ -34,7 +35,8 @@ TypeScript is run directly with `tsx` (no build step). `.js` in import paths map
 - `server/ai/providers/openai.ts` — Responses API (`/responses`, `input_image`, strict
   `json_schema`). `openaiCompatible.ts` — Chat Completions (`/chat/completions`, `image_url`,
   `json_object`/`json_schema`, optional `enable_thinking`). `http.ts` — `fetch` wrapper.
-- `server/ai/config.ts` — `.env` → `AiConfig`. `getAiConfig()` throws if `AI_API_KEY` missing.
+- `server/ai/config.ts` — `.env` → `AiConfig`. Remote analysis is blocked unless
+  `AI_REMOTE_ANALYSIS=1`; `getAiConfig()` then throws if `AI_API_KEY` is missing.
 - `server/ai/schema.ts` — `POSTER_ANALYSIS_JSON_SCHEMA` + runtime `validatePosterAnalysis`.
 - `server/ai/normalize.ts` — strip JSON fences, clean coordinates, migrate `systemNameKo` → `systemName`.
 - `server/ai/cache.ts` — in-memory Map; key = sha256(image + provider + model + promptVersion + schemaVersion).

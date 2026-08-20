@@ -7,6 +7,10 @@
 Detect the underlying **layout grid system** of any poster / design image with a vision model —
 then view the grid overlaid on the image and **export it as SVG guides or CSS Grid / Tailwind code**.
 
+The installable skill defaults to the host model's native vision capability. It does not upload
+conversation images or call a remote API. The web UI and CLI remain available as explicit,
+opt-in remote-provider tools.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Node](https://img.shields.io/badge/node-%3E%3D18-brightgreen)](package.json)
 [![Platform](https://img.shields.io/badge/agent-skill%20ready-7c5bff)](#install-as-a-skill)
@@ -62,7 +66,8 @@ Then it draws the grid **overlaid directly on the poster** and lets you export i
 It is **model-agnostic**: it works with **OpenAI** or any **OpenAI-compatible** multimodal model
 (Qwen-VL, etc.), and requires **no AI SDK** — just native `fetch`.
 
-> ⚠️ **No API keys are bundled or committed.** You bring your own key via a local `.env`.
+> ⚠️ The skill itself uses the host model and needs no API key. The optional web UI / CLI mode
+> requires a local `.env`; no API keys are bundled or committed.
 
 ---
 
@@ -144,13 +149,14 @@ poster-grid-inspector/
 
 ## Quick start
 
-**Prerequisites:** Node.js ≥ 18 (native `fetch`), and a **vision-capable** model API key.
+**Prerequisites for optional remote mode:** Node.js ≥ 18 (native `fetch`) and a
+**vision-capable** model API key. Host-model skill use needs neither.
 
 ```bash
 git clone https://github.com/Ygria/poster-grid-inspector.git
 cd poster-grid-inspector
 npm run setup        # install deps + create .env from .env.example
-# edit .env — set AI_PROVIDER / AI_API_KEY / AI_BASE_URL / AI_MODEL
+# edit .env — set AI_REMOTE_ANALYSIS=1 and the provider variables
 npm start            # open http://localhost:8787
 ```
 
@@ -166,9 +172,10 @@ npm run analyze -- ./poster.jpg --summary
 
 ### 1. Web UI (recommended)
 
-1. `npm start` → open `http://localhost:8787`.
-2. Click / drag a poster image onto the drop zone.
-3. Click **分析网格系统** (analyze). The grid overlays the image live — toggle columns, rows,
+1. Set `AI_REMOTE_ANALYSIS=1` in `.env`.
+2. `npm start` → open `http://localhost:8787`.
+3. Click / drag a poster image onto the drop zone.
+4. Click **分析网格系统** (analyze). The grid overlays the image live — toggle columns, rows,
    margins, baseline, keylines, and element boxes above the preview.
 4. Click **下载 SVG 参考** for the automatic reference artifact, or click **调整图层** to
    choose SVG layers and copy **CSS Grid / Tailwind** code.
@@ -198,8 +205,8 @@ SVG 和 CSS / Tailwind 导出分别提供可复制、可下载的参考结果：
 ### 2. CLI
 
 ```bash
-npm run analyze -- ./poster.jpg --summary   # concise result
-npm run analyze -- ./poster.png             # full JSON
+AI_REMOTE_ANALYSIS=1 npm run analyze -- ./poster.jpg --summary   # concise result
+AI_REMOTE_ANALYSIS=1 npm run analyze -- ./poster.png             # full JSON
 ```
 
 The CLI calls the analysis pipeline directly (no server needed). It sends the file as-is;
@@ -287,6 +294,7 @@ Also available: `GET /health` → `{ ok, provider, model }`.
 
 | Env var | Default | Notes |
 |---|---|---|
+| `AI_REMOTE_ANALYSIS` | `0` | Must be `1`/`true`/`yes`/`on` to allow remote image analysis |
 | `AI_PROVIDER` | `openai` | `openai` or `openai-compatible` |
 | `AI_API_KEY` | — | **required** |
 | `AI_BASE_URL` | `https://api.openai.com/v1` | for compatible providers |
@@ -393,7 +401,8 @@ the skill. Copy the folder (optionally without `.git/`) to install.
 
 ## Security
 
-- **API keys live only in your local `.env`** (git-ignored). No key is committed or bundled.
+- **The host-model skill does not read or transmit API keys.** Optional remote mode reads keys
+  only from your local `.env` (git-ignored); no key is committed or bundled.
 - The frontend never receives or sends your key; all AI calls go through the local server.
 - `.claude/settings.local.json` (which may record command history) is git-ignored too.
 - Before pushing, the repo is audited for secrets; see `.gitignore`.
